@@ -224,12 +224,14 @@
 }
 
 - (BOOL)hasFront {
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    AVCaptureDeviceDiscoverySession *session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionFront];
+    NSArray *devices = session.devices;
     return [devices count] > 1;
 }
 
 - (BOOL)hasBack {
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    AVCaptureDeviceDiscoverySession *session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionBack];
+    NSArray *devices = session.devices;
     return [devices count] > 0;
 }
 
@@ -553,9 +555,14 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     }
     
     AVCaptureDevice *zxd = nil;
-    
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-    
+    NSArray *devices = nil;
+    if (@available(iOS 13.0, *)) {
+        AVCaptureDeviceDiscoverySession *session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInUltraWideCamera, AVCaptureDeviceTypeBuiltInWideAngleCamera] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
+        devices = session.devices;
+    } else {
+        AVCaptureDeviceDiscoverySession *session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
+        devices = session.devices;
+    }
     if ([devices count] > 0) {
         if (self.captureDeviceIndex == -1) {
             AVCaptureDevicePosition position = AVCaptureDevicePositionBack;
@@ -565,7 +572,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             
             for (unsigned int i = 0; i < [devices count]; ++i) {
                 AVCaptureDevice *dev = [devices objectAtIndex:i];
-                if (dev.position == position) {
+                if (dev.position == position && [dev isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus]) {
                     self.captureDeviceIndex = i;
                     zxd = dev;
                     break;
@@ -577,7 +584,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             zxd = [devices objectAtIndex:self.captureDeviceIndex];
         }
     }
-    
     if (!zxd) {
         zxd = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
     }
